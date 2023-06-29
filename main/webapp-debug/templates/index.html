@@ -11,6 +11,13 @@
 <div id="map" style="height: 600px;"></div>
 
 <div style="margin: 10px;">
+    <h2>Add Nodes:</h2>
+    <form id="nodesForm"></form>
+    <button onclick="addNode()">Add another node</button>
+    <button onclick="enableMapSelection()">Select on map</button>
+    <br/>
+    <br/>
+
     <label for="starting_radius">Starting Radius (meters):</label>
     <input type="number" id="starting_radius" name="starting_radius" value="500">
     
@@ -20,27 +27,89 @@
     <label for="max_distance">Max Distance (meters):</label>
     <input type="number" id="max_distance" name="max_distance" value="10000">
     
+    <label for="show_isochrones">Show Isochrones:</label>
+    <input type="checkbox" id="show_isochrones" name="show_isochrones" checked>
+    
     <button onclick="findIntersection()">Find Intersection</button>
 </div>
 
 <script>
+    var nodeCount = 0;
+    var mapSelectMode = false;
+    var isochroneLayers = [];
+    var intersectionLayer = null;
+
+    function addNode(lat, lon) {
+        nodeCount += 1;
+        var form = document.getElementById("nodesForm");
+        var br = document.createElement("br");
+        var latLabel = document.createElement("label");
+        var latInput = document.createElement("input");
+        var lonLabel = document.createElement("label");
+        var lonInput = document.createElement("input");
+
+        latLabel.setAttribute("for", "lat" + nodeCount);
+        latLabel.textContent = "Lat " + nodeCount + ":";
+        latInput.setAttribute("type", "number");
+        latInput.setAttribute("id", "lat" + nodeCount);
+        latInput.setAttribute("name", "lat" + nodeCount);
+        latInput.setAttribute("step", "0.000001");
+        latInput.value = lat || "";
+        
+        lonLabel.setAttribute("for", "lon" + nodeCount);
+        lonLabel.textContent = "Lon " + nodeCount + ":";
+        lonInput.setAttribute("type", "number");
+        lonInput.setAttribute("id", "lon" + nodeCount);
+        lonInput.setAttribute("name", "lon" + nodeCount);
+        lonInput.setAttribute("step", "0.000001");
+        lonInput.value = lon || "";
+
+        form.appendChild(br);
+        form.appendChild(latLabel);
+        form.appendChild(latInput);
+        form.appendChild(lonLabel);
+        form.appendChild(lonInput);
+    }
+
     var map = L.map('map').setView([43.65, -79.38], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
     }).addTo(map);
 
-    var nodes = [
-        [-79.3871, 43.6426], 
-        [-79.3972, 43.6536],
-        [-79.3802, 43.6503]
-    ];
+    // Handling map selection
+    function enableMapSelection() {
+        mapSelectMode = true;
+        map.on('click', onMapClick);
+    }
 
-    var showIsochrones = true;
+    function onMapClick(e) {
+        if (mapSelectMode) {
+            var lat = e.latlng.lat;
+            var lon = e.latlng.lng;
+            addNode(lat, lon);
+        }
+    }
 
+    // Fetch intersection
     function findIntersection() {
+        var nodes = [];
+        for (var i = 1; i <= nodeCount; i++) {
+            var lat = document.getElementById("lat" + i).value;
+            var lon = document.getElementById("lon" + i).value;
+            if (lat && lon) {
+                nodes.push([parseFloat(lon), parseFloat(lat)]);
+            }
+        }
+
+        if (nodes.length <= 1) {
+            alert("Please add more than 1 node to find an intersection.");
+            return;
+        }
+
         var starting_radius = document.getElementById("starting_radius").value;
         var radius_increment = document.getElementById("radius_increment").value;
         var max_distance = document.getElementById("max_distance").value;
+        var showIsochrones = document.getElementById("show_isochrones").checked;
 
         $.ajax({
             url: '/get_intersection',
@@ -56,32 +125,53 @@
             success: function(response) {
                 var intersection = response.geometry;
                 var finalIsochrones = response.final_isochrones;
+                var intersectionRadius = response.intersection_radius;
 
-                for (var i = 0; i < nodes.length; i++) {
-                    var lat = nodes[i][1];
-                    var lon = nodes[i][0];
-                    L.marker([lat, lon]).addTo(map).bindPopup("Node " + (i + 1));
+                // Clear previous layers
+                isochroneLayers.forEach(function(layer) {
+                    map.removeLayer(layer);
+                });
+                isochroneLayers = [];
+                if (intersectionLayer) {
+                    map.removeLayer(intersectionLayer);
+                    intersectionLayer = null;
                 }
 
                 if (finalIsochrones && showIsochrones) {
                     var colors = ['blue', 'green', 'orange', 'purple'];
                     for (var i = 0; i < finalIsochrones.length; i++) {
-                        L.geoJSON(finalIsochrones[i], {
+                        var layer = L.geoJSON(finalIsochrones[i], {
                             style: { color: colors[i % colors.length] }
                         }).addTo(map);
+                        isochroneLayers.push(layer);
                     }
                 }
 
                 if (intersection) {
-                    var intersectionLayer = L.geoJSON(intersection, {
+                    intersectionLayer = L.geoJSON(intersection, {
                         style: { color: 'teal', fillOpacity: 0.5 }
                     }).addTo(map);
 
                     map.fitBounds(intersectionLayer.getBounds());
+                    alert("Intersection found at radius: " + intersectionRadius + " meters.");
+                } else {
+                    alert("No intersection found within the max distance.");
                 }
             }
         });
     }
+
+    document.getElementById("show_isochrones").addEventListener("change", function() {
+        var isChecked = this.checked;
+        isochroneLayers.forEach(function(layer) {
+            if (isChecked) {
+                map.addLayer(layer);
+            } else {
+                map.removeLayer(layer);
+            }
+        });
+    });
+
 </script>
 
 </body>
