@@ -38,6 +38,7 @@
     var mapSelectMode = false;
     var isochroneLayers = [];
     var intersectionLayer = null;
+    var nodeMarkers = [];
 
     function addNode(lat, lon) {
         nodeCount += 1;
@@ -69,12 +70,21 @@
         form.appendChild(latInput);
         form.appendChild(lonLabel);
         form.appendChild(lonInput);
+
+        // Add marker to map if lat, lon provided
+        if (lat && lon) {
+            var marker = L.marker([lat, lon]).addTo(map).bindPopup("Node " + nodeCount);
+            nodeMarkers.push(marker);
+        }
     }
 
     var map = L.map('map').setView([43.65, -79.38], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
     }).addTo(map);
+
+    // Add a scale to the map
+    L.control.scale().addTo(map);
 
     // Handling map selection
     function enableMapSelection() {
@@ -92,6 +102,12 @@
 
     // Fetch intersection
     function findIntersection() {
+        // Clear node markers
+        nodeMarkers.forEach(function(marker) {
+            map.removeLayer(marker);
+        });
+        nodeMarkers = [];
+
         var nodes = [];
         for (var i = 1; i <= nodeCount; i++) {
             var lat = document.getElementById("lat" + i).value;
@@ -136,6 +152,14 @@
                     map.removeLayer(intersectionLayer);
                     intersectionLayer = null;
                 }
+
+                // Adding nodes as markers
+                nodes.forEach(function(node, index) {
+                    var lat = node[1];
+                    var lon = node[0];
+                    var marker = L.marker([lat, lon]).addTo(map).bindPopup("Node " + (index + 1));
+                    nodeMarkers.push(marker);
+                });
 
                 if (finalIsochrones && showIsochrones) {
                     var colors = ['blue', 'green', 'orange', 'purple'];
