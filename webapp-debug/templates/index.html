@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Intersection Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+
+<div id="map" style="height: 600px;"></div>
+
+<script>
+    var map = L.map('map').setView([43.65, -79.38], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+    }).addTo(map);
+
+    var nodes = [
+        [-79.3871, 43.6426], 
+        [-79.3972, 43.6536],
+        [-79.3802, 43.6503]
+    ];
+
+    var showIsochrones = true;  // Toggle this to true or false
+
+    $.ajax({
+        url: '/get_intersection',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ nodes: nodes, show_isochrones: showIsochrones }),
+        success: function(response) {
+            var intersection = response.geometry;
+            var finalIsochrones = response.final_isochrones;
+
+            for (var i = 0; i < nodes.length; i++) {
+                var lat = nodes[i][1];
+                var lon = nodes[i][0];
+                L.marker([lat, lon]).addTo(map).bindPopup("Node " + (i + 1));
+            }
+
+            if (finalIsochrones && showIsochrones) {
+                var colors = ['blue', 'green', 'orange', 'purple'];
+                for (var i = 0; i < finalIsochrones.length; i++) {
+                    L.geoJSON(finalIsochrones[i], {
+                        style: { color: colors[i % colors.length] }
+                    }).addTo(map);
+                }
+            }
+
+            if (intersection) {
+                var intersectionLayer = L.geoJSON(intersection, {
+                    style: { color: 'teal', fillOpacity: 0.5 }
+                }).addTo(map);
+
+                map.fitBounds(intersectionLayer.getBounds());
+            }
+        }
+    });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Intersection Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+
+<div id="map" style="height: 600px;"></div>
+
+<script>
+    var map = L.map('map').setView([51.505, -0.09], 2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+    }).addTo(map);
+
+    // Define the nodes you want to send
+    // var nodes = [
+    //     [13.388860, 52.517037], // Berlin
+    //     [-0.1276474, 51.5073219], // London
+    //     [-74.0060152, 40.7127281] // New York
+    // ];
+var nodes = [
+    [-79.3871, 43.6426], 
+    [-79.3972, 43.6536],
+    [-79.3802, 43.6503]
+];
+
+    // AJAX call for fetching the intersection polygon
+    $.ajax({
+        url: '/get_intersection',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ nodes: nodes }),
+        success: function(response) {
+            var intersection = response.geometry;
+            var responseNodes = response.nodes; // Renamed the variable here
+
+            // Add markers for the nodes
+            for (var i = 0; i < nodes.length; i++) {
+                var lat = nodes[i][1];
+                var lon = nodes[i][0];
+                L.marker([lat, lon]).addTo(map).bindPopup("Node " + (i + 1));
+            }
+            
+            // Add intersection polygon if it exists
+            if (intersection) {
+                L.geoJSON(intersection).addTo(map);
+            }
+        
+
+        }
+    });
+</script>
+
+</body>
+</html>

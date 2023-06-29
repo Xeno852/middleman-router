@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Intersection Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+
+<div id="map" style="height: 600px;"></div>
+
+<script>
+    var map = L.map('map').setView([43.65, -79.38], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+    }).addTo(map);
+
+    var nodes = [
+        [-79.3871, 43.6426], 
+        [-79.3972, 43.6536],
+        [-79.3802, 43.6503]
+    ];
+
+    // Create a new XMLHttpRequest to send data to the server
+    var request = new XMLHttpRequest();
+    request.open('POST', '/get_intersection', true);
+    request.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
+
+    request.onload = function () {
+        if (this.status >= 200 && this.status < 400) {
+            // Success!
+            var data = JSON.parse(this.response);
+            console.log('Received data from server:', data);
+
+            // Add markers for the nodes
+            for (var i = 0; i < nodes.length; i++) {
+                var lat = nodes[i][1];
+                var lon = nodes[i][0];
+                L.marker([lat, lon]).addTo(map).bindPopup("Node " + (i + 1));
+            }
+
+            if (data.geometry) {
+                console.log('Received intersection polygon:', data.geometry);
+
+                // Adding the intersection polygon to the map
+                var intersectionLayer = L.geoJSON(data.geometry, {
+                    style: function (feature) {
+                        return {
+                            color: 'green',
+                            fillOpacity: 0.5
+                        };
+                    }
+                }).addTo(map);
+            } else {
+                console.error('Intersection data not found in server response.');
+            }
+        } else {
+            // Server error
+            console.error('Server returned an error:', this.response);
+        }
+    };
+
+    request.onerror = function () {
+        console.error('There was a connection error while sending request to server.');
+    };
+
+    console.log('Sending data to server:', { nodes: nodes });
+
+    // Send the request to the server
+    request.send(JSON.stringify({ nodes: nodes }));
+
+</script>
+
+</body>
+</html>

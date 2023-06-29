@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Isochrones Intersection</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+
+<div id="map" style="height: 600px;"></div>
+
+<label for="radius">Starting Radius (meters):</label>
+<input type="number" id="radius" name="radius" value="500"><br><br>
+
+<label for="increment">Radius Increment (meters):</label>
+<input type="number" id="increment" name="increment" value="500"><br><br>
+
+<button onclick="getIntersection()">Get Intersection</button>
+
+<script>
+    var map = L.map('map').setView([43.6426, -79.3871], 14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {}).addTo(map);
+
+    map.on('click', function (e) {
+        L.marker([e.latlng.lat, e.latlng.lng]).addTo(map);
+        nodes.push([e.latlng.lng, e.latlng.lat]);
+    });
+
+    var nodes = [];
+
+    function getIntersection() {
+        var radius = document.getElementById("radius").value;
+        var increment = document.getElementById("increment").value;
+        var show_isochrones = true; // set this to true for debugging, can be made a user input
+
+        $.post("/get_intersection", JSON.stringify({
+            nodes: nodes,
+            radius: radius,
+            increment: increment,
+            show_isochrones: show_isochrones
+        }), function (data) {
+            if (data.geometry) {
+                L.geoJSON(data.geometry).addTo(map);
+            }
+            if (data.final_isochrones) {
+                data.final_isochrones.forEach(function (isochrone) {
+                    L.geoJSON(isochrone, {color: 'red'}).addTo(map);
+                });
+            }
+        }, "json").fail(function(xhr, status, error) {
+            console.error("Error: " + error);
+            console.error("Status: " + status);
+            console.dir(xhr);
+        });
+    }
+</script>
+
+</body>
+</html>

@@ -1,8 +1,14 @@
 import openrouteservice
 import shapely.geometry
-
+import os
+# from dotenv import load_dotenv
 # Set up OpenRouteService with your API key
-client = openrouteservice.Client(key="your_ors_api_key_here")
+
+
+# ors_api_key = os.environ['ORS_API_KEY']
+client = openrouteservice.Client(key='ors_api_key')
+print(ors_api_key)
+client = openrouteservice.Client(key=ors_api_key)
 
 # Define the coordinates of your nodes [(lon1, lat1), (lon2, lat2), ...]
 nodes = [
@@ -21,8 +27,12 @@ max_radius = 10000
 isochrones = []
 
 # Generate isochrones
-for node in nodes:
+for node_index, node in enumerate(nodes, start=1):
+    print(f"Processing node {node_index} out of {len(nodes)}...")
+    
     for radius in range(radius_increment, max_radius + 1, radius_increment):
+        print(f"  Generating isochrone with radius {radius} meters...")
+        
         isochrone = client.isochrones(
             locations=[node],
             profile='foot-walking',  # or 'driving-car', depending on your use case
@@ -33,6 +43,7 @@ for node in nodes:
         isochrones.append(isochrone_geom)
 
         # Check if there's an intersection with all other isochrones
+        print("  Checking for intersections...")
         intersection = isochrone_geom
         for other_isochrone in isochrones[:-1]:
             intersection = intersection.intersection(other_isochrone)
@@ -41,7 +52,7 @@ for node in nodes:
         
         # If an intersection is found with all isochrones, this is the intersection area
         if not intersection.is_empty:
-            print(f"Intersection found at radius {radius} meters")
+            print(f"Intersection found at radius {radius} meters for node {node_index}.")
             print(intersection)
             exit()
 
