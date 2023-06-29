@@ -15,19 +15,21 @@ app = Flask(__name__)
 @app.route('/')
 def index():
     return render_template('index.html')
-
 @app.route('/get_intersection', methods=['POST'])
 def get_intersection():
     nodes = request.json.get('nodes')
     show_isochrones = request.json.get('show_isochrones')
+    starting_radius = int(request.json.get('starting_radius', 500))
+    radius_increment = int(request.json.get('radius_increment', 500))
+    
     client = openrouteservice.Client(key=ors_api_key)
-    radius_increment = 500
-    # max_radius = 10000
-    max_radius = 1000
+    
     isochrones = []
     
     logging.info(f'Received nodes: {nodes}')
     logging.info(f'Show isochrones: {show_isochrones}')
+    logging.info(f'Starting Radius: {starting_radius}')
+    logging.info(f'Radius Increment: {radius_increment}')
 
     # Collect isochrones for all nodes
     for node in nodes:
@@ -35,8 +37,7 @@ def get_intersection():
         isochrone = client.isochrones(
             locations=[node],
             profile='foot-walking',
-            range=[max_radius],
-            # attributes=['total_pop']
+            range=[starting_radius],
         )
         isochrone_geom = shapely.geometry.shape(isochrone['features'][0]['geometry'])
         isochrones.append(isochrone_geom)

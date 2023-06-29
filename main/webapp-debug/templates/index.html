@@ -9,6 +9,15 @@
 <body>
 
 <div id="map" style="height: 600px;"></div>
+<div style="margin-top: 10px;">
+    <label for="startingRadius">Starting Radius (meters):</label>
+    <input type="number" id="startingRadius" value="500">
+    
+    <label for="radiusIncrement">Radius Increment (meters):</label>
+    <input type="number" id="radiusIncrement" value="500">
+    
+    <button onclick="calculateIsochrones()">Calculate Isochrones</button>
+</div>
 
 <script>
     var map = L.map('map').setView([43.65, -79.38], 13);
@@ -16,7 +25,7 @@
         maxZoom: 19,
     }).addTo(map);
 
-    var nodes = [           // SAMPLE NODES (toronto) 
+    var nodes = [           // SAMPLE NODES (Toronto) 
         [-79.3871, 43.6426], 
         [-79.3972, 43.6536],
         [-79.3802, 43.6503]
@@ -24,39 +33,49 @@
 
     var showIsochrones = true;  // Toggle this to true or false
 
-    $.ajax({
-        url: '/get_intersection',
-        type: 'POST',
-        contentType: 'application/json',
-        data: JSON.stringify({ nodes: nodes, show_isochrones: showIsochrones }),
-        success: function(response) {
-            var intersection = response.geometry;
-            var finalIsochrones = response.final_isochrones;
+    function calculateIsochrones() {
+        var startingRadius = document.getElementById("startingRadius").value;
+        var radiusIncrement = document.getElementById("radiusIncrement").value;
+        
+        $.ajax({
+            url: '/get_intersection',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ 
+                nodes: nodes, 
+                show_isochrones: showIsochrones,
+                starting_radius: startingRadius,
+                radius_increment: radiusIncrement
+            }),
+            success: function(response) {
+                var intersection = response.geometry;
+                var finalIsochrones = response.final_isochrones;
 
-            for (var i = 0; i < nodes.length; i++) {
-                var lat = nodes[i][1];
-                var lon = nodes[i][0];
-                L.marker([lat, lon]).addTo(map).bindPopup("Node " + (i + 1));
-            }
+                for (var i = 0; i < nodes.length; i++) {
+                    var lat = nodes[i][1];
+                    var lon = nodes[i][0];
+                    L.marker([lat, lon]).addTo(map).bindPopup("Node " + (i + 1));
+                }
 
-            if (finalIsochrones && showIsochrones) {
-                var colors = ['blue', 'green', 'orange', 'purple'];
-                for (var i = 0; i < finalIsochrones.length; i++) {
-                    L.geoJSON(finalIsochrones[i], {
-                        style: { color: colors[i % colors.length] }
+                if (finalIsochrones && showIsochrones) {
+                    var colors = ['blue', 'green', 'orange', 'purple'];
+                    for (var i = 0; i < finalIsochrones.length; i++) {
+                        L.geoJSON(finalIsochrones[i], {
+                            style: { color: colors[i % colors.length] }
+                        }).addTo(map);
+                    }
+                }
+
+                if (intersection) {
+                    var intersectionLayer = L.geoJSON(intersection, {
+                        style: { color: 'teal', fillOpacity: 0.5 }
                     }).addTo(map);
+
+                    map.fitBounds(intersectionLayer.getBounds());
                 }
             }
-
-            if (intersection) {
-                var intersectionLayer = L.geoJSON(intersection, {
-                    style: { color: 'teal', fillOpacity: 0.5 }
-                }).addTo(map);
-
-                map.fitBounds(intersectionLayer.getBounds());
-            }
-        }
-    });
+        });
+    }
 </script>
 
 </body>
