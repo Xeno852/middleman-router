@@ -1,4 +1,5 @@
-
+# Backend for isochrone-intersection.html which calculates the intersection of isochrones generated from a set of nodes.
+ 
 from flask import Flask, render_template, request, jsonify
 import openrouteservice
 import shapely.geometry
